@@ -3,6 +3,8 @@ package gemini
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
+	"one-api/common"
 	"one-api/common/requester"
 	"one-api/types"
 	"strings"
@@ -32,8 +34,12 @@ func (p *GeminiProvider) CreateGeminiChat(request *GeminiChatRequest) (*GeminiCh
 		return nil, errWithCode
 	}
 
+	if len(geminiResponse.Candidates) == 0 {
+		return nil, common.StringErrorWrapper("no candidates", "no_candidates", http.StatusInternalServerError)
+	}
+
 	usage := p.GetUsage()
-	*usage = convertOpenAIUsage(request.Model, geminiResponse.UsageMetadata)
+	*usage = convertOpenAIUsage(geminiResponse.UsageMetadata)
 
 	return geminiResponse, nil
 }
@@ -95,13 +101,13 @@ func (h *GeminiRelayStreamHandler) HandlerStream(rawLine *[]byte, dataChan chan 
 		return
 	}
 
-	if geminiResponse.UsageMetadata == nil || (len(geminiResponse.Candidates[0].Content.Parts) > 0 && geminiResponse.Candidates[0].Content.Parts[0].CodeExecutionResult != nil) {
+	if geminiResponse.UsageMetadata == nil || (len(geminiResponse.Candidates) > 0 && len(geminiResponse.Candidates[0].Content.Parts) > 0 && geminiResponse.Candidates[0].Content.Parts[0].CodeExecutionResult != nil) {
 		dataChan <- rawStr
 		return
 	}
 
 	lastType := "text"
-	if len(geminiResponse.Candidates[0].Content.Parts) > 0 && geminiResponse.Candidates[0].Content.Parts[0].ExecutableCode != nil {
+	if len(geminiResponse.Candidates) > 0 && len(geminiResponse.Candidates[0].Content.Parts) > 0 && geminiResponse.Candidates[0].Content.Parts[0].ExecutableCode != nil {
 		lastType = "code"
 	}
 	if h.LastType != lastType {
@@ -109,10 +115,9 @@ func (h *GeminiRelayStreamHandler) HandlerStream(rawLine *[]byte, dataChan chan 
 		h.LastType = lastType
 	}
 
-	adjustTokenCounts(h.ModelName, geminiResponse.UsageMetadata)
-
 	h.Usage.PromptTokens = geminiResponse.UsageMetadata.PromptTokenCount
 	h.Usage.CompletionTokens += geminiResponse.UsageMetadata.CandidatesTokenCount - h.LastCandidates
+	h.Usage.CompletionTokensDetails.ReasoningTokens += geminiResponse.UsageMetadata.ThoughtsTokenCount
 	h.Usage.TotalTokens = h.Usage.PromptTokens + h.Usage.CompletionTokens
 	h.LastCandidates = geminiResponse.UsageMetadata.CandidatesTokenCount
 

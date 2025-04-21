@@ -36,8 +36,8 @@ type ChatCompletionToolCallsFunction struct {
 }
 
 type ChatCompletionToolCalls struct {
-	Id       string                           `json:"id"`
-	Type     string                           `json:"type"`
+	Id       string                           `json:"id,omitempty"`
+	Type     string                           `json:"type,omitempty"`
 	Function *ChatCompletionToolCallsFunction `json:"function"`
 	Index    int                              `json:"index"`
 }
@@ -196,6 +196,7 @@ type ChatCompletionRequest struct {
 	MaxCompletionTokens int                           `json:"max_completion_tokens,omitempty"`
 	Temperature         *float64                      `json:"temperature,omitempty"`
 	TopP                *float64                      `json:"top_p,omitempty"`
+	TopK                *float64                      `json:"top_k,omitempty"`
 	N                   *int                          `json:"n,omitempty"`
 	Stream              bool                          `json:"stream,omitempty"`
 	StreamOptions       *StreamOptions                `json:"stream_options,omitempty"`
@@ -217,10 +218,16 @@ type ChatCompletionRequest struct {
 	Audio               *ChatAudio                    `json:"audio,omitempty"`
 	ReasoningEffort     *string                       `json:"reasoning_effort,omitempty"`
 	Prediction          any                           `json:"prediction,omitempty"`
+	WebSearchOptions    *WebSearchOptions             `json:"web_search_options,omitempty"`
 
-	WebSearchOptions *WebSearchOptions `json:"web_search_options,omitempty"`
+	Reasoning *ChatReasoning `json:"reasoning,omitempty"`
 
 	OneOtherArg string `json:"-"`
+}
+
+type ChatReasoning struct {
+	MaxTokens int    `json:"max_tokens,omitempty"`
+	Effort    string `json:"effort,omitempty"`
 }
 
 type WebSearchOptions struct {
